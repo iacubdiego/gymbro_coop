@@ -253,6 +253,18 @@ body[data-mode="login"] #tabs{display:none}
 .shared{display:grid;gap:6px;margin:10px 0 4px}
 .shared li{padding-left:14px;position:relative;color:var(--ink2)}
 .shared li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.demo{position:relative;margin:12px 0 4px;border-radius:12px;overflow:hidden;background:#fff;border:1px solid var(--line)}
+.demo .fr{position:relative;aspect-ratio:4/3}
+.demo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#fff}
+.demo img.b{animation:demo-swap 2.4s steps(1,end) infinite}
+@keyframes demo-swap{0%{opacity:0}50%{opacity:1}}
+.demo figcaption{padding:8px 12px;font-size:13px;color:var(--ink2);background:var(--card);border-top:1px solid var(--line)}
+.demo-link{background:none;border:0;padding:0;color:var(--accent);font-weight:600;font-size:14px;margin-top:6px}
+@media (prefers-reduced-motion: reduce){
+  .demo .fr{display:grid;grid-template-columns:1fr 1fr;aspect-ratio:auto}
+  .demo img{position:static;aspect-ratio:4/3}
+  .demo img.b{animation:none}
+}
 @media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
 </style>
 </head>
@@ -410,6 +422,32 @@ const LIB=[
   note:'Los flexores acortados suelen tirar de la zona lumbar. Una serie por lado.'}
 ];
 const LIBMAP={};LIB.forEach(x=>LIBMAP[x.id]=x);
+
+/* ---------- demostraciones (Free Exercise DB, dominio público) ---------- */
+/* id de nuestro ejercicio -> carpeta en github.com/yuhonas/free-exercise-db/tree/main/exercises
+   Para verificar o descargar las imágenes: python3 tools/demos.py */
+const DEMO={
+ prensa:['Leg_Press'],goblet:['Goblet_Squat','Se muestra sin cajón.'],puente:['Butt_Lift_Bridge'],
+ hipthrust:['Barbell_Hip_Thrust','Se muestra con barra.'],hipthrustmaq:['Barbell_Hip_Thrust','Se muestra con barra: en la máquina el movimiento es el mismo.'],
+ curlfem:['Seated_Leg_Curl'],glutemaq:['One-Legged_Cable_Kickback','Se muestra en polea.'],
+ abductores:['Thigh_Abductor'],aductores:['Thigh_Adductor'],pajaros:['Reverse_Machine_Flyes'],extcuad:['Leg_Extensions'],
+ gemelos:['Seated_Calf_Raise'],splitsq:['Split_Squat_with_Dumbbells'],stepup:['Dumbbell_Step_Ups'],pullthrough:['Pull_Through'],
+ jalon:['Wide-Grip_Lat_Pulldown'],remoapoy:['Leverage_Iso_Row'],remoinc:['Dumbbell_Incline_Row'],remosent:['Seated_Cable_Rows'],
+ facepull:['Face_Pull'],biceps:['Seated_Dumbbell_Curl'],presspecho:['Leverage_Chest_Press'],pressinc:['Incline_Dumbbell_Press'],
+ presshombro:['Seated_Dumbbell_Press'],elevlat:['Side_Lateral_Raise'],triceps:['Triceps_Pushdown'],
+ plankfront:['Plank'],plankside:['Side_Bridge'],deadbug:['Dead_Bug'],pallof:['Pallof_Press'],farmer:['Farmers_Walk'],
+ caminata:['Walking_Treadmill'],bici:['Bicycling_Stationary'],catcamel:['Cat_Stretch'],flexcadera:['Kneeling_Hip_Flexor']
+};
+const DEMO_BASE=((window.EJE_CONFIG||{}).demoBase||'https://raw.githubusercontent.com/yuhonas/free-exercise-db/main/exercises/').replace(/\/?$/,'/');
+const demoBroken=new Set();
+function hasDemo(id){return !!DEMO[id]&&!demoBroken.has(id);}
+function demoHtml(id){
+  if(!hasDemo(id))return '';
+  const d=DEMO[id],u=DEMO_BASE+encodeURIComponent(d[0]);
+  return '<figure class="demo" data-demo="'+esc(id)+'"><div class="fr"><img class="a" src="'+u+'/0.jpg" alt="Posición inicial" loading="lazy" onerror="demoFail(this)"><img class="b" src="'+u+'/1.jpg" alt="Posición final" loading="lazy" onerror="demoFail(this)"></div>'+
+    '<figcaption>'+(d[1]?esc(d[1])+' ':'')+'Fotos: Free Exercise DB, dominio público.</figcaption></figure>';
+}
+window.demoFail=function(img){const f=img.closest('figure');if(!f)return;demoBroken.add(f.dataset.demo);f.remove();};
 
 /* ---------- equipamiento del gimnasio ---------- */
 const EQUIP=[
@@ -857,6 +895,7 @@ function entryHtml(e,i){
   const ex=exOf(e.ex);const last=lastSetsFor(e.ex);
   return '<section class="ex" data-i="'+i+'"><div class="ex-h"><h3>'+esc(ex.n)+'</h3>'+pillHtml(ex.risk)+'</div>'+
   '<p class="meta">Objetivo '+esc(tgtText(e.sets.length,e.target,ex))+(last?'. Última vez: '+esc(fmtSets(last,ex))+'.':'.')+'</p>'+
+  (hasDemo(ex.id)?'<button class="demo-link" data-act="ex-info" data-ex="'+esc(ex.id)+'">Ver cómo se hace</button>':'')+
   (ex.cues&&ex.cues.length?'<details class="tech"><summary>Técnica y cuidados</summary><ul>'+ex.cues.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul>'+(ex.note?'<p class="why">'+esc(ex.note)+'</p>':'')+'</details>':'')+
   '<div class="sets">'+e.sets.map((st,s)=>setRow(ex,st,i,s)).join('')+'</div>'+
   '<div class="setctl"><button class="link" data-act="addset" data-i="'+i+'">Agregar serie</button>'+(e.sets.length>1?'<button class="link danger" data-act="rmset" data-i="'+i+'">Quitar serie</button>':'')+'</div></section>';
@@ -1110,7 +1149,7 @@ function pickerSheet(rid,draft){
 }
 function exInfoSheet(id){
   const ex=exOf(id);const r=RISK[ex.risk]||RISK.user;
-  openSheet('<div class="ex-h"><h2>'+esc(ex.n)+'</h2></div><p style="margin:8px 0">'+pillHtml(ex.risk)+' <span class="muted small">'+esc(ex.g)+'</span></p><p class="muted small">'+esc(r.desc)+'</p>'+
+  openSheet('<div class="ex-h"><h2>'+esc(ex.n)+'</h2></div>'+demoHtml(ex.id)+'<p style="margin:8px 0">'+pillHtml(ex.risk)+' <span class="muted small">'+esc(ex.g)+'</span></p>'+(isLumbar()||String(ex.id).startsWith('c_')?'<p class="muted small">'+esc(r.desc)+'</p>':'')+
    (ex.cues&&ex.cues.length?'<h3 style="margin-top:18px">Técnica</h3><details class="tech" open style="margin-top:6px"><summary hidden></summary><ul>'+ex.cues.map(c=>'<li>'+esc(c)+'</li>').join('')+'</ul></details>':'')+
    (ex.note?'<p style="margin-top:12px">'+esc(ex.note)+'</p>':'')+
    '<div class="acts">'+(String(ex.id).startsWith('c_')?'<button class="btn alt danger" data-act="del-ex" data-ex="'+esc(ex.id)+'">Borrar</button>':'')+'<button class="btn" data-act="close-sheet">Cerrar</button></div>');
